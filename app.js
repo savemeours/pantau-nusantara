@@ -3,7 +3,7 @@ const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=
 const cats={gempa:['Gempa','wave-square','#ff7e86'],hotspot:['Titik panas','fire-flame-curved','#f5ad67'],banjir:['Banjir','water','#6dccdf'],gunung:['Gunung api','mountain','#d1b3fa'],laporan:['Laporan','bullhorn','#84b6f9'],cuaca:['Cuaca','cloud-bolt','#e7ce74']};
 const map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([-2.4,118],5); L.control.zoom({position:'topright'}).addTo(map);
 let light=false, tile;
-function tiles(){if(tile)map.removeLayer(tile);tile=L.tileLayer('https://{s}.basemaps.cartocdn.com/'+(light?'light_all':'dark_all')+'/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',maxZoom:19}).addTo(map)}tiles();
+function tiles(){document.body.classList.toggle('light-map',light);if(tile)map.removeLayer(tile);tile=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',maxZoom:19}).addTo(map)}tiles();
 const layers=L.layerGroup().addTo(map);let data={},selected='all',query='',period=0,rows=[],busy=false;
 const fmt=t=>{const d=new Date(t);return Number.isFinite(+d)?d.toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZoneName:'short'}):'Waktu tidak tersedia'};
 function time(p){return p.waktu||p.tanggal||p.diperbarui||p.mulai}
