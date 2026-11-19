@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
 <style>
 :root{
   --bg:#f4f6f8;--panel:#fff;--panel2:#f0f3f6;--line:#e1e6eb;--text:#101c27;--muted:#64768a;--accent:#0e7490;--accent-ink:#fff;
@@ -335,7 +336,7 @@ function setLive(c,t){ $("live").className = "live " + c; $("liveTxt").textConte
 const map = L.map("map",{zoomControl:false,preferCanvas:true,maxZoom:19}).setView([-2.5,118],5);
 L.control.zoom({position:"topright"}).addTo(map);
 const clusterAvailable=typeof L.markerClusterGroup==='function';
-const layer = clusterAvailable?L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:42,
+const layer = clusterAvailable?L.markerClusterGroup({animate:false,showCoverageOnHover:false,maxClusterRadius:42,
   iconCreateFunction:c => L.divIcon({className:"",iconSize:[30,30],html:`<div class="cl">${c.getChildCount()}</div>`})}).addTo(map):L.layerGroup().addTo(map);
 const weatherLayer=L.layerGroup().addTo(map);
 let tiles, meMarker; const markers = {};
@@ -416,7 +417,7 @@ function renderStats(){
 function select(id, fly=true){
   const e = state.all.find(x => x.id === id); if (!e) return;
   state.sel = id; const c = CATS[e.cat];
-  if(fly){const marker=markers[id];if(clusterAvailable&&marker)layer.zoomToShowLayer(marker,()=>map.flyTo([e.lat,e.lng],Math.max(map.getZoom(),9),{duration:reduceMotion?0:.7}));else map.flyTo([e.lat,e.lng],Math.max(map.getZoom(),9),{duration:reduceMotion?0:.7})}
+  if(fly)map.flyTo([e.lat,e.lng],Math.max(map.getZoom(),9),{duration:reduceMotion?0:.7});
   $("detail").className = "detail open"; $("detail").style.setProperty("--c", c.color);
   $("detail").innerHTML = `<button class="x" aria-label="Tutup detail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     <div class="k">${glyph(e.cat,14)}${c.label}</div><h2>${esc(e.title)}</h2>
@@ -426,7 +427,7 @@ function select(id, fly=true){
     ${e.desc?`<p style="margin-top:10px;color:var(--muted);font-size:12.5px">${esc(e.desc)}</p>`:""}
     <div class="acts"><a href="https://www.google.com/maps?q=${e.lat},${e.lng}" target="_blank" rel="noopener">Buka di Maps ↗</a><button data-copy="${e.lat.toFixed(5)}, ${e.lng.toFixed(5)}">Salin koordinat</button>${/^https?:/.test(e.url)?`<a href="${esc(e.url)}" target="_blank" rel="noopener">Sumber ↗</a>`:""}</div>`;
   document.querySelectorAll(".row").forEach(b => b.setAttribute("aria-current", b.dataset.id === id));
-  renderMap();
+  Object.entries(markers).forEach(([key,m])=>m.getElement()?.querySelector(".pin")?.classList.toggle("on",key===id));
   if (innerWidth <= 860) $("panel").classList.remove("full");
 }
 function toast(t){ const el = $("toast"); el.textContent = t; el.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = "none", 2600); }
