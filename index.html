@@ -1,1 +1,522 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111a24"><title>Pantau Nusantara — Peta Kejadian Indonesia</title><meta name="description" content="Pantau gempa, titik panas, banjir, gunung api dan laporan kejadian di Indonesia dalam satu peta."><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"><link rel="stylesheet" href="style.css?v=3"></head><body><header><a class="brand" href="./"><span class="brand-icon"><i class="fa-solid fa-satellite-dish"></i></span><span>PANTAU <b>NUSANTARA</b><small>Observasi kejadian Indonesia</small></span></a><div class="header-right"><span id="status">Memuat data…</span><button id="refresh" title="Perbarui data" aria-label="Perbarui data"><i class="fa-solid fa-rotate"></i></button><button id="about" aria-label="Informasi sumber"><i class="fa-solid fa-circle-info"></i></button></div></header><main><aside><div class="intro"><span class="eyebrow">PUSAT PEMANTAUAN</span><h1>Ada apa di<br>Indonesia?</h1><p>Jelajahi kejadian, pahami situasi.</p></div><label class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="search" placeholder="Cari lokasi atau kejadian…" aria-label="Cari lokasi atau kejadian"></label><div class="filters" id="filters"></div><div class="list-heading"><h2 id="listTitle">Semua kejadian</h2><select id="period" aria-label="Rentang waktu"><option value="0">Semua waktu</option><option value="24">24 jam</option><option value="72">3 hari</option><option value="168">7 hari</option></select></div><div id="results" aria-live="polite"><p class="empty">Menghubungkan sumber data…</p></div><footer>Data agregasi: <a href="https://whatsupindonesia.id/" target="_blank" rel="noopener">What'sUpIndonesia</a><br><span id="updated">Menunggu pembaruan</span></footer></aside><section class="map-area" aria-label="Peta kejadian"><div id="map"></div><div class="map-caption"><span class="pulse"></span> INDONESIA <span>/</span> PETA KEJADIAN</div><div class="map-tools"><button id="home" aria-label="Tampilkan seluruh Indonesia" title="Seluruh Indonesia"><i class="fa-solid fa-expand"></i></button><button id="basemap" aria-label="Ganti tampilan peta" title="Ganti tampilan peta"><i class="fa-solid fa-layer-group"></i></button></div><div class="notice"><i class="fa-solid fa-circle-exclamation"></i><span>Bukan layanan peringatan resmi. Ikuti arahan BMKG, BNPB, dan PVMBG.</span></div><button id="mobileList"><i class="fa-solid fa-list-ul"></i> Daftar kejadian</button></section></main><dialog id="info"><button id="closeInfo" aria-label="Tutup informasi">×</button><span class="eyebrow">TENTANG DATA</span><h2>Pantau dengan konteks.</h2><p>Aplikasi independen oleh savemeours. Data diambil dari berkas publik What'sUpIndonesia, yang mengagregasi BMKG, USGS, NASA FIRMS, BNPB, PVMBG, dan laporan warga.</p><p>Titik panas merupakan deteksi panas satelit, belum tentu kebakaran. Peringatan cuaca tidak sama dengan kejadian banjir. Waktu data ditampilkan sesuai sumber; pembaruan aplikasi tidak menjamin sumber telah diperbarui.</p><p>Peringatan tsunami resmi hanya dari BMKG. Gunakan kanal resmi untuk keputusan keselamatan.</p><div class="source-links"><a href="https://www.bmkg.go.id/" target="_blank" rel="noopener">BMKG ↗</a><a href="https://bnpb.go.id/" target="_blank" rel="noopener">BNPB ↗</a><a href="https://magma.esdm.go.id/" target="_blank" rel="noopener">MAGMA ↗</a><a href="https://whatsupindonesia.id/" target="_blank" rel="noopener">Sumber data ↗</a></div></dialog><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="app.js?v=3"></script></body></html>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pantau Nusantara — Peta Kejadian Indonesia</title>
+<meta name="description" content="Pantau gempa, titik panas, banjir, gunung api dan laporan kejadian di Indonesia dalam satu peta.">
+<meta name="theme-color" content="#0f1b26">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#f4f6f8;--panel:#fff;--panel2:#f0f3f6;--line:#e1e6eb;--text:#101c27;--muted:#64768a;--accent:#0e7490;--accent-ink:#fff;
+  --gempa:#d9731a;--panas:#d1453b;--banjir:#2f7fd1;--gunung:#7e57c2;--laporan:#2e9e6a;
+  font-family:"Plus Jakarta Sans",system-ui,sans-serif;color-scheme:light;--hd:56px
+}
+:root[data-theme=dark]{
+  --bg:#0a121a;--panel:#111d29;--panel2:#172635;--line:#223647;--text:#e6eef4;--muted:#8da2b3;--accent:#38bdf8;--accent-ink:#04202e;
+  --gempa:#f59a42;--panas:#f4695d;--banjir:#5aa6f5;--gunung:#a98af0;--laporan:#4cc98a;color-scheme:dark
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;overflow:hidden;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{display:block}
+.app{display:grid;grid-template-rows:var(--hd) auto 1fr;height:100%}
+header{display:flex;align-items:center;gap:8px;padding:0 20px;background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--text);color:var(--bg);display:grid;place-items:center}
+.brand b{font-weight:800;font-size:15px;letter-spacing:-.01em}
+.brand span{font-size:12px;color:var(--muted);padding-left:10px;margin-left:2px;border-left:1px solid var(--line)}
+.live{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin-right:6px}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.live.ok i{background:var(--laporan)}.live.err i{background:var(--panas)}
+.btn{height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;gap:7px;font-weight:600;font-size:12.5px;background:var(--panel)}
+.btn:hover{background:var(--panel2)}
+.btn.sq{width:34px;padding:0;justify-content:center}
+/* ringkasan */
+.strip{padding:14px 20px 12px;display:grid;gap:12px;border-bottom:1px solid var(--line);background:var(--bg)}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bar h1{font-size:17px;font-weight:800;letter-spacing:-.01em;margin-right:auto}
+.bar h1 small{display:block;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0}
+.seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:2px}
+.seg button{padding:5px 12px;border-radius:7px;font-weight:600;font-size:12.5px;color:var(--muted)}
+.seg button[aria-pressed=true]{background:var(--panel);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.kpi{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;border-left:3px solid var(--c,var(--text))}
+.kpi:hover{border-color:var(--muted);border-left-color:var(--c,var(--text))}
+.kpi[aria-pressed=true]{background:var(--panel2);border-color:var(--c,var(--text));box-shadow:inset 0 0 0 1px var(--c,var(--text))}
+.kpi .g{grid-row:span 2;color:var(--c)}
+.kpi span{font-size:12px;color:var(--muted);font-weight:600}
+.kpi b{font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.02em}
+.kpi em{font-style:normal;font-size:11.5px;color:var(--muted);grid-column:2;font-weight:500}
+/* utama */
+.main{display:grid;grid-template-columns:1fr 420px;min-height:0}
+.mapwrap{position:relative;min-height:0}
+#map{position:absolute;inset:0;background:var(--bg)}
+.mapbtns{position:absolute;left:12px;top:12px;z-index:900;display:grid;gap:6px}
+.legend{position:absolute;left:12px;bottom:12px;z-index:900;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 12px;display:flex;gap:14px;font-size:12px;font-weight:500}
+.legend span{display:flex;align-items:center;gap:6px}
+.toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:1000;background:var(--text);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:600;display:none}
+.detail{position:absolute;left:12px;bottom:56px;z-index:1000;width:340px;max-width:calc(100% - 24px);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.18);display:none}
+.detail.open{display:block}
+.detail .k{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--c)}
+.detail h2{font-size:16px;line-height:1.3;margin:6px 0 12px;padding-right:30px;letter-spacing:-.01em}
+.detail dl{display:grid;grid-template-columns:96px 1fr;gap:6px 10px;font-size:12.5px;padding-top:10px;border-top:1px solid var(--line)}
+.detail dt{color:var(--muted)}.detail dd{font-weight:600}
+.detail .x{position:absolute;right:10px;top:10px;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
+.detail .x:hover{background:var(--panel2)}
+.acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.acts a,.acts button{height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--line);font-weight:600;font-size:12px;color:var(--text);text-decoration:none;display:flex;align-items:center}
+.acts a:hover,.acts button:hover{background:var(--panel2)}
+/* panel */
+aside{display:flex;flex-direction:column;background:var(--panel);border-left:1px solid var(--line);min-height:0}
+.grab{display:none}
+.tabs{display:flex;padding:0 16px;border-bottom:1px solid var(--line);gap:18px}
+.tabs button{padding:12px 0;font-weight:700;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected=true]{color:var(--text);border-color:var(--accent)}
+.pane{flex:1;min-height:0;display:none;flex-direction:column}
+.pane.on{display:flex}
+.filters{padding:12px 16px;display:grid;gap:8px;border-bottom:1px solid var(--line)}
+.search{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:0 11px;color:var(--muted)}
+.search:focus-within{border-color:var(--accent)}
+.search input{flex:1;border:0;background:none;padding:9px 0;outline:0;color:var(--text)}
+.sel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:12.5px;font-weight:600;width:100%}
+select option{background:var(--panel);color:var(--text)}
+.count{display:flex;justify-content:space-between;padding:8px 16px;font-size:12px;color:var(--muted);font-weight:500}
+.list{flex:1;overflow-y:auto;min-height:0}
+.row{display:grid;grid-template-columns:36px 1fr;gap:12px;width:100%;text-align:left;padding:11px 16px;border-top:1px solid var(--line);border-left:3px solid transparent}
+.row:hover{background:var(--panel2)}
+.row[aria-current=true]{background:var(--panel2);border-left-color:var(--c)}
+.tile{width:36px;height:36px;border-radius:8px;background:var(--panel2);display:grid;place-items:center;color:var(--c);font-weight:800;font-size:13px}
+.row[aria-current=true] .tile{background:var(--panel)}
+.row h3{font-size:13px;font-weight:700;line-height:1.35}
+.row p{display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:2px}
+.row p b{color:var(--c);font-weight:700}
+.row p i{font-style:normal;opacity:.5}
+.empty{padding:36px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--text);margin-bottom:4px}
+.skel div{height:58px;margin:10px 16px;border-radius:8px;background:linear-gradient(90deg,var(--panel2),var(--line),var(--panel2));background-size:200% 100%;animation:sh 1.3s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+.foot{padding:9px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);background:var(--panel2)}
+.foot b{color:var(--text)}
+/* analisis */
+.stats{overflow-y:auto;padding:16px;display:grid;gap:18px;align-content:start}
+.stats h4{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px}
+.sum{font-size:13.5px;line-height:1.55}
+.tl{display:flex;gap:8px;align-items:flex-end;height:96px}
+.tl div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;font-size:10.5px;color:var(--muted);text-align:center}
+.tl div span{display:flex;flex-direction:column-reverse;border-radius:4px;overflow:hidden;margin-bottom:4px}
+.tl div span i{display:block;background:var(--c)}
+.comp{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px}
+.comp i{background:var(--c)}
+.lg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:12px}
+.lg span{display:flex;align-items:center;gap:6px}.lg b{font-weight:700}
+.hb{display:grid;grid-template-columns:62px 1fr 26px;gap:8px;align-items:center;font-size:12px;margin-bottom:6px}
+.hb u{height:8px;border-radius:4px;background:var(--panel2);text-decoration:none;overflow:hidden}
+.hb u i{display:block;height:100%;background:var(--gempa);border-radius:4px}
+.hb em{font-style:normal;text-align:right;font-weight:700}
+.mini{display:grid;grid-template-columns:36px 1fr;gap:10px;text-align:left;width:100%;padding:9px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px}
+.mini:hover{background:var(--panel2)}
+.mini small{display:block;color:var(--muted);font-size:11.5px}.mini b{font-size:13px}
+.src{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--line)}
+/* leaflet */
+.leaflet-container{font-family:inherit}
+.leaflet-control-zoom{border:1px solid var(--line)!important;border-radius:10px!important;overflow:hidden;box-shadow:none!important}
+.leaflet-control-zoom a{background:var(--panel)!important;color:var(--text)!important;border-color:var(--line)!important}
+.leaflet-bar a{width:32px!important;height:32px!important;line-height:32px!important}
+.pin{width:20px;height:20px;transition:transform .12s;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
+.pin.on{transform:scale(1.5)}
+.pin:hover{transform:scale(1.25)}
+.cl{width:30px;height:30px;border-radius:8px;background:var(--text);color:var(--bg);border:2px solid var(--panel);display:grid;place-items:center;font-weight:800;font-size:12px}
+.me{width:14px;height:14px;border-radius:50%;background:#2f7fd1;border:3px solid #fff;box-shadow:0 0 0 6px rgba(47,127,209,.25)}
+.modal{position:fixed;inset:0;z-index:3000;background:rgba(5,12,18,.6);display:none;place-items:center;padding:16px}
+.modal.open{display:grid}
+.sheet{background:var(--panel);border-radius:16px;max-width:520px;width:100%;max-height:88vh;overflow:auto;padding:24px}
+.sheet h2{font-size:20px;margin-bottom:10px}.sheet p{color:var(--muted);margin-bottom:10px}
+.sheet .acts a{margin:0}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.main{grid-template-columns:1fr 360px}}
+@media(max-width:860px){
+  .brand span,.live b,.btn .t{display:none}
+  header{padding:0 12px}.strip{padding:10px 12px;gap:8px}
+  .bar h1 small{display:none}.bar h1{font-size:15px}
+  .kpis{display:flex;overflow-x:auto;scrollbar-width:none;gap:8px;margin:0 -12px;padding:0 12px}
+  .kpi{flex:none;min-width:132px;padding:8px 10px}.kpi b{font-size:18px}
+  .main{display:block;position:relative}
+  .mapwrap{position:absolute;inset:0}
+  .legend{display:none}
+  .detail{left:10px;right:10px;top:10px;bottom:auto;width:auto}
+  aside{position:absolute;left:0;right:0;bottom:0;height:62%;border:1px solid var(--line);border-radius:18px 18px 0 0;z-index:1500;transform:translateY(calc(100% - 96px));transition:transform .25s;box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+  aside.full{transform:none}
+  .grab{display:block;width:100%;padding:10px 0 4px}.grab i{display:block;width:40px;height:4px;border-radius:4px;background:var(--line);margin:0 auto}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+:root{--cuaca:#b27a12}:root[data-theme=dark]{--cuaca:#e7ce74}
+.app{height:100dvh;grid-template-rows:var(--hd) auto minmax(0,1fr);overflow:hidden}.main{overflow:hidden}
+.kpis{grid-template-columns:repeat(7,minmax(0,1fr))}.kpi{min-width:0}.search input{min-width:0;width:100%}.detail{max-height:calc(100% - 80px);overflow:auto}.legend{flex-wrap:wrap;right:12px;width:fit-content}
+.dark-map .leaflet-tile-pane{filter:invert(.93) hue-rotate(175deg) saturate(.4) brightness(.8)}
+.event-pin.pulse::before{content:"";position:absolute;inset:-5px;border:2px solid var(--accent);border-radius:50%;animation:ripple 2.5s ease-out infinite;pointer-events:none}.event-pin.pulse:has(.pin.on)::before{border-width:3px}
+@keyframes ripple{from{transform:scale(.4);opacity:.65}to{transform:scale(1.8);opacity:0}}.row{animation:appear .2s ease-out}@keyframes appear{from{opacity:0}to{opacity:1}}
+dialog.modal{border:0;max-width:100%;max-height:100%;width:100%;height:100%;color:var(--text);background:transparent}dialog.modal::backdrop{background:#050c1299}
+#alerts .sheet{font-size:13px}#alerts label{display:flex;gap:9px;align-items:center;margin:12px 0}#alertCats{display:grid;grid-template-columns:1fr 1fr}.alert-history{padding:10px 0;border-top:1px solid var(--line)}.alert-history small{display:block;color:var(--muted)}#notificationStatus{font-size:12px}#bell{position:relative}#bell.new::after{content:"";position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--panas)}
+@media(max-width:1100px) and (min-width:861px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:860px){.kpis{display:flex}.kpi{min-width:132px}header{gap:5px}.brand b{font-size:12px}.btn{padding:0 7px}.live{margin-right:0}.mapbtns .btn{width:34px;justify-content:center}.mapbtns .t{display:none}.detail{max-height:calc(100% - 115px)}.toast{max-width:calc(100% - 95px);left:60px;transform:none;right:12px}.seg button{padding:5px 8px}}
+
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <div class="logo" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+    <b>Pantau Nusantara</b><span>Observasi kejadian Indonesia</span>
+  </div>
+  <div class="live" id="live" role="status"><i></i><b id="liveTxt">Memuat data…</b></div>
+  <button class="btn" id="export" aria-label="Unduh CSV"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg><span class="t">Unduh CSV</span></button>
+  <button class="btn sq" id="refresh" aria-label="Muat ulang data"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+  <button class="btn sq" id="theme" aria-label="Ganti tema"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></svg></button>
+  <button class="btn sq" id="about" aria-label="Tentang data"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
+</header>
+
+<section class="strip" aria-label="Ringkasan">
+  <div class="bar">
+    <h1>Pusat pemantauan<small id="updated">Menunggu pembaruan</small></h1>
+    <div class="seg" id="seg" role="group" aria-label="Rentang waktu">
+      <button data-h="0" aria-pressed="true">Semua</button><button data-h="24" aria-pressed="false">24 jam</button><button data-h="72" aria-pressed="false">3 hari</button><button data-h="168" aria-pressed="false">7 hari</button>
+    </div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+</section>
+
+<div class="main">
+  <div class="mapwrap">
+    <div id="map" role="application" aria-label="Peta kejadian"></div>
+    <div class="mapbtns">
+      <button class="btn" id="locate"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span class="t">Lokasi saya</span></button>
+      <button class="btn" id="reset"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="t">Seluruh Indonesia</span></button>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="toast" id="toast" role="status"></div>
+    <section class="detail" id="detail" aria-live="polite"></section>
+  </div>
+
+  <aside id="panel" aria-label="Panel kejadian">
+    <button class="grab" id="grab" aria-label="Buka atau tutup daftar"><i></i></button>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-t="list" aria-selected="true">Kejadian</button>
+      <button role="tab" data-t="stats" aria-selected="false">Analisis</button>
+    </div>
+    <div class="pane on" id="p-list">
+      <div class="filters">
+        <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Cari lokasi atau kejadian" autocomplete="off" aria-label="Cari"></label>
+        <div class="sel">
+          <select id="sort" aria-label="Urutkan"><option value="new">Terbaru</option><option value="mag">Magnitudo terbesar</option><option value="near" disabled>Terdekat (aktifkan lokasi)</option></select>
+          <select id="mag" aria-label="Magnitudo minimum"><option value="0">Semua magnitudo</option><option value="3">Gempa M ≥ 3</option><option value="4">Gempa M ≥ 4</option><option value="5">Gempa M ≥ 5</option></select>
+        </div>
+      </div>
+      <div class="count"><span id="count">—</span><span id="clear"></span></div>
+      <div class="list" id="list" aria-live="polite"></div>
+    </div>
+    <div class="pane" id="p-stats"><div class="stats" id="stats"></div></div>
+    <div class="foot"><b>Bukan layanan peringatan resmi.</b> Ikuti arahan BMKG, BNPB, dan PVMBG. Peringatan tsunami resmi hanya dari BMKG.</div>
+  </aside>
+</div>
+</div>
+
+<dialog class="modal" id="modal" aria-labelledby="mt">
+  <div class="sheet">
+    <h2 id="mt">Tentang data</h2>
+    <p>Aplikasi independen oleh savemeours. Data diambil dari berkas publik What'sUpIndonesia, yang mengagregasi BMKG, USGS, NASA FIRMS, BNPB, PVMBG, dan laporan warga.</p>
+    <p>Titik panas adalah deteksi panas satelit, belum tentu kebakaran. Peringatan cuaca tidak sama dengan kejadian banjir. Waktu ditampilkan sesuai sumber (WIB); pembaruan aplikasi tidak menjamin sumber sudah diperbarui.</p>
+    <p><b>Peringatan tsunami resmi hanya dari BMKG.</b> Gunakan kanal resmi untuk keputusan keselamatan.</p>
+    <div class="acts"><a href="https://www.bmkg.go.id/" target="_blank" rel="noopener">BMKG ↗</a><a href="https://bnpb.go.id/" target="_blank" rel="noopener">BNPB ↗</a><a href="https://magma.esdm.go.id/" target="_blank" rel="noopener">MAGMA ↗</a><a href="https://whatsupindonesia.id/" target="_blank" rel="noopener">Sumber data ↗</a><button id="closeModal" style="margin-left:auto">Tutup</button></div>
+  </div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script>
+/* Sumber publik dan interval pemeriksaan pembaruan. */
+const CONFIG = { DATA_URL: "https://whatsupindonesia.id/data/live/", REFRESH_MS: 60 * 1000 };
+let loading=false, sourceMeta=null;
+
+/* Bentuk penanda berbeda per kategori agar mudah dibedakan tanpa bergantung warna */
+const SH = {
+  cuaca:'<path d="M6 6a5 5 0 0 1 9 3h1a3 3 0 0 1 0 6H5a4 4 0 0 1 1-8z"/>',
+  gempa:'<circle cx="10" cy="10" r="6.2"/><circle cx="10" cy="10" r="2" fill="#fff" stroke="none"/>',
+  panas:'<path d="M10 2.5 17.5 10 10 17.5 2.5 10z"/>',
+  banjir:'<rect x="3.5" y="3.5" width="13" height="13" rx="3"/>',
+  gunung:'<path d="M10 3 17.5 16.5h-15z"/>',
+  laporan:'<path d="M10 2.8l6.2 3.6v7.2L10 17.2l-6.2-3.6V6.4z"/>'
+};
+const CATS = {
+  cuaca:{label:"Cuaca",color:"var(--cuaca)"}, gempa:{label:"Gempa",color:"var(--gempa)"}, panas:{label:"Titik panas",color:"var(--panas)"},
+  banjir:{label:"Banjir",color:"var(--banjir)"}, gunung:{label:"Gunung api",color:"var(--gunung)"}, laporan:{label:"Laporan",color:"var(--laporan)"}
+};
+const state = { all:[], cat:new Set(), hours:0, q:"", sort:"new", minMag:0, sel:null, me:null, tab:"list",limit:200 };
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v.slice(4,-1)).trim();
+const glyph = (c,s=18,fill=true) => `<svg width="${s}" height="${s}" viewBox="0 0 20 20" fill="${fill?"currentColor":"none"}" stroke="${fill?"none":"currentColor"}" stroke-width="2" stroke-linejoin="round">${SH[c]}</svg>`;
+
+/* ===== Data ===== */
+function pick(o, keys){ for (const k of keys) if (o[k] != null && o[k] !== "") return o[k]; }
+function toCat(s){
+  s = String(s||"").toLowerCase();
+  if (/cuaca|peringatan|weather/.test(s)) return "cuaca";
+  if (/gempa|quake/.test(s)) return "gempa";
+  if (/hot|panas|fire|firms/.test(s)) return "panas";
+  if (/banjir|flood/.test(s)) return "banjir";
+  if (/gunung|volc|magma|erupt/.test(s)) return "gunung";
+  return "laporan";
+}
+function normalize(raw){
+  const out=[];
+  function take(input,hint){
+    if(!input||typeof input!=='object')return;
+    if(Array.isArray(input)){input.forEach(o=>take(o,hint));return}
+    if(input.type==='FeatureCollection'){take(input.features,hint);return}
+    if(input.type!=='Feature'&&!('lat'in input)&&!('latitude'in input)&&!('Lintang'in input)){
+      for(const [k,v]of Object.entries(input))if(k!=='meta'&&v&&typeof v==='object')take(v,k);return
+    }
+    const o=input.properties||input,geometry=input.geometry;
+    let lat,lng;
+    if(geometry?.type==='Point'){[lng,lat]=geometry.coordinates||[]}
+    else if(geometry){try{const bounds=L.geoJSON(geometry).getBounds();if(!bounds.isValid())return;const c=bounds.getCenter();lat=c.lat;lng=c.lng}catch{return}}
+    else {lat=parseFloat(pick(o,['lat','latitude','Lintang']));lng=parseFloat(pick(o,['lng','lon','long','longitude','Bujur']))}
+    lat=Number(lat);lng=Number(lng);if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return;
+    const cat=toCat(hint||pick(o,['type','kategori','category','jenis','kind']));
+    if(cat==='cuaca'&&o.berakhir&&Date.parse(o.berakhir)<Date.now())return;
+    const rawTime=pick(o,['time','waktu','datetime','timestamp','tanggal','date','acq_datetime','mulai']);
+    const t=rawTime?new Date(rawTime):null,mag=Number.parseFloat(pick(o,['mag','magnitude','magnitudo']));
+    const where=pick(o,['lokasi','location','place','kabupaten','kabupaten_bnpb','provinsi']);
+    const name=pick(o,['title','judul','name','nama','wilayah'])||where||o.jenis||CATS[cat].label;
+    const title=cat==='gempa'&&Number.isFinite(mag)?`M ${mag.toFixed(1)} — ${name}`:cat==='gunung'?`${name}${o.status?' — '+o.status:''}`:cat==='laporan'?(o.teks||name):name;
+    const desc=[pick(o,['description','deskripsi','keterangan','detail','kronologis','teks']),o.kondisi,o.dirasakan&&'Dirasakan: '+o.dirasakan,o.rekomendasi&&(Array.isArray(o.rekomendasi)?o.rekomendasi.join(' '):o.rekomendasi)].filter(Boolean).join('\n');
+    const id=cat+'|'+String(o.id??[o.nama||'',rawTime||'',lat,lng,o.satelit||''].join('|'));
+    out.push({id,cat,title:String(title),desc,mag:Number.isFinite(mag)?mag:null,depth:pick(o,['kedalaman_km','depth','kedalaman']),source:pick(o,['source','sumber'])||({panas:'NASA FIRMS',gunung:'PVMBG',cuaca:'BMKG'}[cat]||''),url:pick(o,['url','link','tautan'])||'',lat,lng,time:t&&!isNaN(t)?t:null,geometry,level:o.level,status:o.status,periode:o.periode,expires:o.berakhir});
+  }
+  take(raw);return Array.from(new Map(out.map(e=>[e.id,e])).values());
+}
+async function load(){
+  if(loading)return;loading=true;$('refresh').disabled=true;setLive('', 'Memuat data…');
+  if(!state.all.length)$('list').innerHTML='<div class="skel"><div></div><div></div><div></div></div>';
+  try{
+    const files={gempa:'gempa.geojson',panas:'titik_panas.geojson',banjir:'banjir_bnpb.geojson',gunung:'gunung_api.geojson',laporan:'laporan.geojson',cuaca:'peringatan.geojson'};
+    const entries=Object.entries(files),bundle={};let fallback=false,partial=false;
+    const results=await Promise.allSettled([...entries.map(async([k,f])=>{const r=await fetch(CONFIG.DATA_URL+f+'?t='+Math.floor(Date.now()/60000),{signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error(r.status);const value=await r.json();if(value.type!=='FeatureCollection'||!Array.isArray(value.features))throw Error('Format sumber tidak sesuai');return value}),fetch(CONFIG.DATA_URL+'meta.json?t='+Math.floor(Date.now()/60000),{signal:AbortSignal.timeout(20000)}).then(r=>{if(!r.ok)throw Error(r.status);return r.json()})]);
+    let success=0;
+    results.slice(0,entries.length).forEach((r,i)=>{const k=entries[i][0];if(r.status==='fulfilled'){bundle[k]=r.value;success++}else{partial=true;bundle[k]=state.all.filter(e=>e.cat===k)}});
+    if(!success){if(state.all.length)throw Error('Sumber tidak dapat dihubungi');const r=await fetch('./live.json',{signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error(r.status);Object.assign(bundle,await r.json());fallback=true}
+    sourceMeta=results[entries.length].status==='fulfilled'?results[entries.length].value:(bundle.meta||sourceMeta);
+    // Keep failed categories intact; already-normalized objects must not be interpreted as raw GeoJSON.
+    const fresh=normalize(Object.fromEntries(Object.entries(bundle).filter(([k])=>k!=='meta'&&!Array.isArray(bundle[k]))));
+    if(!fallback)for(const [k,v]of Object.entries(bundle))if(Array.isArray(v))fresh.push(...v);
+    if(!fallback&&!partial)trackUpdates(fresh);
+    state.all=fresh;
+    if(state.sel&&!state.all.some(e=>e.id===state.sel)){state.sel=null;$('detail').className='detail'}
+    const stamp=sourceMeta?.diperbarui,old=!stamp||Date.now()-Date.parse(stamp)>3600000;
+    setLive(fallback||partial||old?'err':'ok',fallback?'Data cadangan':partial?'Sebagian sumber belum terhubung':old?'Data sumber belum diperbarui':'Data terhubung');
+    $('updated').textContent=(stamp?'Pembaruan sumber '+fmt(new Date(stamp)):'Waktu sumber tidak tersedia')+(partial?' · sebagian data dipertahankan':'');
+    render();if(state.sel)select(state.sel,false);
+  }catch(e){setLive('err',state.all.length?'Koneksi gagal · data terakhir':'Gagal memuat');if(state.all.length){render();toast('Gagal memperbarui. Data terakhir tetap ditampilkan.')}else $('list').innerHTML='<div class="empty"><b>Data tidak dapat dimuat</b>Periksa koneksi, lalu klik muat ulang.</div>'}
+  finally{loading=false;$('refresh').disabled=false}
+}
+function setLive(c,t){ $("live").className = "live " + c; $("liveTxt").textContent = t; }
+
+/* ===== Peta ===== */
+const map = L.map("map",{zoomControl:false,preferCanvas:true,maxZoom:19}).setView([-2.5,118],5);
+L.control.zoom({position:"topright"}).addTo(map);
+const clusterAvailable=typeof L.markerClusterGroup==='function';
+const layer = clusterAvailable?L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:42,
+  iconCreateFunction:c => L.divIcon({className:"",iconSize:[30,30],html:`<div class="cl">${c.getChildCount()}</div>`})}).addTo(map):L.layerGroup().addTo(map);
+const weatherLayer=L.layerGroup().addTo(map);
+let tiles, meMarker; const markers = {};
+function setTiles(){
+  const d = document.documentElement.dataset.theme === "dark";
+  if (tiles) map.removeLayer(tiles);
+  document.documentElement.classList.toggle("dark-map",d);
+  tiles=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+}
+
+/* ===== Penyaringan & util ===== */
+const dist = (a,b,c,d) => { const R=6371,t=x=>x*Math.PI/180,h=Math.sin(t(c-a)/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(t(d-b)/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
+const ago = d => { if (!d) return "Waktu tidak diketahui"; const m = Math.max(0,Math.round((Date.now()-d)/6e4)); return m<1?"Baru saja":m<60?m+" menit lalu":m<1440?Math.round(m/60)+" jam lalu":Math.round(m/1440)+" hari lalu"; };
+const fmt = d => d ? d.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) + " WIB" : "—";
+function base(){
+  const q = state.q.toLowerCase(), lim = state.hours ? Date.now() - state.hours*36e5 : 0;
+  return state.all.filter(e => (!e.expires||Date.parse(e.expires)>Date.now()) && (!lim || (e.time && e.time >= lim)) && (!q || (e.title+" "+e.desc+" "+e.source).toLowerCase().includes(q)) && !(e.cat==="gempa" && state.minMag && (e.mag||0) < state.minMag));
+}
+function items(){
+  const a = base().filter(e => !state.cat.size || state.cat.has(e.cat));
+  if (state.me) a.forEach(e => e.km = dist(state.me.lat,state.me.lng,e.lat,e.lng));
+  const s = {new:(x,y)=>(y.time||0)-(x.time||0), mag:(x,y)=>(y.mag||-1)-(x.mag||-1)||(y.time||0)-(x.time||0), near:(x,y)=>(x.km??1e9)-(y.km??1e9)}[state.sort];
+  return a.sort(s);
+}
+
+/* ===== Render ===== */
+function render(){if(state.sel&&!items().some(e=>e.id===state.sel)){state.sel=null;$("detail").className="detail"} renderKpi(); renderList(); renderMap(); renderStats(); }
+function renderKpi(){
+  const b = base(), day = Date.now()-864e5, tot = {}, d24 = {};
+  b.forEach(e => { tot[e.cat]=(tot[e.cat]||0)+1; if (e.time && e.time>=day) d24[e.cat]=(d24[e.cat]||0)+1; });
+  const all24 = Object.values(d24).reduce((a,b)=>a+b,0);
+  $("kpis").innerHTML = `<button class="kpi" data-c="" aria-pressed="${!state.cat.size}" style="--c:var(--text)"><span class="g">${'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>'}</span><span>Semua kejadian</span><b>${b.length}</b><em>${all24} dalam 24 jam</em></button>` +
+    Object.entries(CATS).map(([k,v]) => `<button class="kpi" data-c="${k}" aria-pressed="${state.cat.has(k)}" style="--c:${v.color}"><span class="g">${glyph(k,22)}</span><span>${v.label}</span><b>${tot[k]||0}</b><em>${d24[k]||0} dalam 24 jam</em></button>`).join("");
+  $("legend").innerHTML = Object.entries(CATS).map(([k,v]) => `<span style="color:${v.color}">${glyph(k,14)}<span style="color:var(--text)">${v.label}</span></span>`).join("");
+}
+function renderList(){
+  const a = items();
+  $("count").textContent = a.length + " kejadian" + (state.cat.size ? " · difilter" : "");
+  $("clear").innerHTML = (state.cat.size || state.q || state.minMag || state.hours) ? '<button id="reset-f" style="color:var(--accent);font-weight:700;font-size:12px">Hapus filter</button>' : "";
+  $("list").innerHTML = a.length ? a.slice(0,state.limit).map(e => {
+    const c = CATS[e.cat];
+    return `<button class="row" data-id="${esc(e.id)}" style="--c:${c.color}" aria-current="${state.sel===e.id}">
+      <span class="tile">${e.cat==="gempa"&&e.mag?e.mag.toFixed(1):glyph(e.cat,16)}</span>
+      <span><h3>${esc(e.title)}</h3><p><b>${c.label}</b><i>•</i><span>${ago(e.time)}</span>${e.km!=null?`<i>•</i><span>${Math.round(e.km)} km</span>`:""}${e.source?`<i>•</i><span>${esc(e.source)}</span>`:""}</p></span></button>`;
+  }).join("")+(a.length>state.limit?`<button id="moreEvents" class="btn" style="margin:12px auto">Tampilkan 200 lagi (${state.limit} dari ${a.length})</button>`:"") : '<div class="empty"><b>Tidak ada kejadian yang cocok</b>Ubah kategori, rentang waktu, atau kata kunci.</div>';
+}
+function renderMap(){
+  layer.clearLayers();weatherLayer.clearLayers();Object.keys(markers).forEach(k=>delete markers[k]);
+  const stroke = css("var(--panel)");
+  const batch=[];items().forEach(e => {
+    const col = css(CATS[e.cat].color);
+    if(e.cat==='cuaca'&&e.geometry&&e.geometry.type!=='Point'){L.geoJSON(e.geometry,{style:{color:col,weight:1,fillOpacity:.12}}).on('click',()=>select(e.id,false)).addTo(weatherLayer)}
+    const animated=(e.cat==='gempa'||e.cat==='gunung')?' pulse':'';
+    const m = L.marker([e.lat,e.lng],{title:e.title,icon:L.divIcon({className:"event-pin"+animated,iconSize:[20,20],html:`<svg class="pin${state.sel===e.id?" on":""}" viewBox="0 0 20 20" fill="${col}" stroke="${stroke}" stroke-width="1.6" stroke-linejoin="round">${SH[e.cat]}</svg>`})});
+    m.on("click", () => select(e.id,false)); batch.push(m); markers[e.id] = m;
+  });if(clusterAvailable)layer.addLayers(batch);else batch.forEach(m=>layer.addLayer(m));
+}
+function renderStats(){
+  const b = base(), all = state.all;
+  const g = b.filter(e => e.cat==="gempa"&&e.mag).sort((x,y)=>y.mag-x.mag)[0], last = b.slice().sort((x,y)=>(y.time||0)-(x.time||0))[0];
+  const range = state.hours ? {24:"24 jam terakhir",72:"3 hari terakhir",168:"7 hari terakhir"}[state.hours] : "seluruh data";
+  const days = [...Array(7)].map((_,i) => { const d = new Date(Date.now() - (6-i)*864e5); return {k:dayKey(d), l:d.toLocaleDateString("id-ID",{weekday:"short",timeZone:"Asia/Jakarta"}), n:{}, t:0}; });
+  all.forEach(e => { const d = days.find(x => e.time && x.k === dayKey(e.time)); if (d){ d.n[e.cat]=(d.n[e.cat]||0)+1; d.t++; } });
+  const mx = Math.max(1,...days.map(d=>d.t));
+  const cnt = {}; b.forEach(e => cnt[e.cat]=(cnt[e.cat]||0)+1);
+  const bins = [["< M 3",0,3],["M 3–4",3,4],["M 4–5",4,5],["M ≥ 5",5,99]].map(([l,lo,hi]) => [l, b.filter(e=>e.cat==="gempa"&&e.mag!=null&&e.mag>=lo&&e.mag<hi).length]);
+  const bm = Math.max(1,...bins.map(x=>x[1])), src = {}; b.forEach(e => { const s = e.source||"Tidak tercatat"; src[s]=(src[s]||0)+1; });
+  const mini = e => e ? `<button class="mini" data-id="${esc(e.id)}" style="color:${CATS[e.cat].color}"><span class="tile">${e.cat==="gempa"&&e.mag?e.mag.toFixed(1):glyph(e.cat,16)}</span><span><b style="color:var(--text)">${esc(e.title)}</b><small>${CATS[e.cat].label} · ${ago(e.time)}</small></span></button>` : "";
+  $("stats").innerHTML = `
+  <p class="sum"><b>${b.length} kejadian</b> tercatat dalam ${range}${g?`, dengan gempa terkuat <b>M ${g.mag.toFixed(1)}</b>`:""}${cnt.panas?`, <b>${cnt.panas}</b> titik panas`:""}${cnt.banjir?` dan <b>${cnt.banjir}</b> banjir`:""}.</p>
+  <div><h4>Komposisi kejadian</h4><div class="comp">${Object.keys(CATS).filter(k=>cnt[k]).map(k=>`<i style="--c:${CATS[k].color};flex:${cnt[k]}"></i>`).join("")}</div>
+  <div class="lg">${Object.entries(CATS).map(([k,v])=>`<span style="color:${v.color}">${glyph(k,12)}<span style="color:var(--text)">${v.label} <b>${cnt[k]||0}</b></span></span>`).join("")}</div></div>
+  <div><h4>Tren 7 hari terakhir</h4><div class="tl">${days.map(d=>`<div><span style="height:${d.t/mx*100*.78}%">${Object.keys(CATS).map(k=>d.n[k]?`<i style="--c:${CATS[k].color};flex:${d.n[k]}"></i>`:"").join("")}</span>${d.l}</div>`).join("")}</div></div>
+  <div><h4>Sebaran magnitudo gempa</h4>${bins.map(([l,n])=>`<div class="hb"><span>${l}</span><u><i style="width:${n/bm*100}%"></i></u><em>${n}</em></div>`).join("")}</div>
+  <div><h4>Perlu perhatian</h4>${mini(g)}${mini(last)}</div>
+  <div><h4>Sumber data</h4>${Object.entries(src).sort((x,y)=>y[1]-x[1]).slice(0,6).map(([s,n])=>`<div class="src"><span>${esc(s)}</span><b>${n}</b></div>`).join("")||'<div class="empty">Belum ada data.</div>'}</div>`;
+}
+function select(id, fly=true){
+  const e = state.all.find(x => x.id === id); if (!e) return;
+  state.sel = id; const c = CATS[e.cat];
+  if(fly){const marker=markers[id];if(clusterAvailable&&marker)layer.zoomToShowLayer(marker,()=>map.flyTo([e.lat,e.lng],Math.max(map.getZoom(),9),{duration:reduceMotion?0:.7}));else map.flyTo([e.lat,e.lng],Math.max(map.getZoom(),9),{duration:reduceMotion?0:.7})}
+  $("detail").className = "detail open"; $("detail").style.setProperty("--c", c.color);
+  $("detail").innerHTML = `<button class="x" aria-label="Tutup detail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="k">${glyph(e.cat,14)}${c.label}</div><h2>${esc(e.title)}</h2>
+    <dl><dt>Waktu</dt><dd>${fmt(e.time)}<br><span style="font-weight:500;color:var(--muted)">${ago(e.time)}</span></dd>
+    ${e.mag?`<dt>Magnitudo</dt><dd>M ${e.mag.toFixed(1)}</dd>`:""}${e.depth!=null?`<dt>Kedalaman</dt><dd>${esc(e.depth)}${typeof e.depth==="number"?" km":""}</dd>`:""}${e.status?`<dt>Status</dt><dd>${esc(e.status)}</dd>`:""}${e.periode?`<dt>Periode laporan</dt><dd>${esc(e.periode)}</dd>`:""}
+    <dt>Koordinat</dt><dd>${e.lat.toFixed(3)}, ${e.lng.toFixed(3)}</dd>${state.me?`<dt>Dari lokasi Anda</dt><dd>${Math.round(dist(state.me.lat,state.me.lng,e.lat,e.lng))} km</dd>`:""}${e.source?`<dt>Sumber</dt><dd>${esc(e.source)}</dd>`:""}</dl>
+    ${e.desc?`<p style="margin-top:10px;color:var(--muted);font-size:12.5px">${esc(e.desc)}</p>`:""}
+    <div class="acts"><a href="https://www.google.com/maps?q=${e.lat},${e.lng}" target="_blank" rel="noopener">Buka di Maps ↗</a><button data-copy="${e.lat.toFixed(5)}, ${e.lng.toFixed(5)}">Salin koordinat</button>${/^https?:/.test(e.url)?`<a href="${esc(e.url)}" target="_blank" rel="noopener">Sumber ↗</a>`:""}</div>`;
+  document.querySelectorAll(".row").forEach(b => b.setAttribute("aria-current", b.dataset.id === id));
+  renderMap();
+  if (innerWidth <= 860) $("panel").classList.remove("full");
+}
+function toast(t){ const el = $("toast"); el.textContent = t; el.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = "none", 2600); }
+
+/* ===== Interaksi ===== */
+$("kpis").onclick = e => { const b = e.target.closest("[data-c]"); if (!b) return; const k = b.dataset.c; if (!k) state.cat.clear(); else state.cat.has(k) ? state.cat.delete(k) : state.cat.add(k); render(); };
+$("seg").onclick = e => { const b = e.target.closest("button"); if (!b) return; state.hours = +b.dataset.h; [...$("seg").children].forEach(x => x.setAttribute("aria-pressed", x === b)); render(); };
+$("q").oninput = e => { state.q = e.target.value.trim();state.limit=200; render(); };
+$("sort").onchange = e => { state.sort = e.target.value; render(); };
+$("mag").onchange = e => { state.minMag = +e.target.value; render(); };
+$("list").onclick = e => {if(e.target.id==="moreEvents"){state.limit+=200;renderList();return} const b = e.target.closest(".row"); if (b) select(b.dataset.id); };
+$("stats").onclick = e => { const b = e.target.closest("[data-id]"); if (b) { select(b.dataset.id); } };
+$("count").parentElement.onclick = e => { if (e.target.id === "reset-f") { state.cat.clear(); state.q = ""; state.minMag = 0;state.hours=0;[...$("seg").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.h==="0")); $("q").value = ""; $("mag").value = "0"; render(); } };
+$("detail").onclick = async e => {
+  if (e.target.closest(".x")) { $("detail").className = "detail"; state.sel = null; renderList(); renderMap(); }
+  const c = e.target.closest("[data-copy]"); if (c) { try{if(!navigator.clipboard)throw Error();await navigator.clipboard.writeText(c.dataset.copy);toast("Koordinat disalin")}catch{toast("Gagal menyalin. Salin koordinat dari detail kejadian.")} }
+};
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+  $("p-list").classList.toggle("on", b.dataset.t === "list"); $("p-stats").classList.toggle("on", b.dataset.t === "stats");
+  if (innerWidth <= 860) $("panel").classList.add("full");
+});
+$("grab").onclick = () => $("panel").classList.toggle("full");
+$("refresh").onclick = load;
+$("reset").onclick = () => map.fitBounds([[-11.5,94],[6.5,142]],{padding:[20,20],animate:!reduceMotion});
+$("locate").onclick = () => {
+  if (!navigator.geolocation) return toast("Peramban tidak mendukung lokasi");
+  toast("Mencari lokasi Anda…");
+  navigator.geolocation.getCurrentPosition(p => {
+    state.me = {lat:p.coords.latitude, lng:p.coords.longitude};
+    if (meMarker) map.removeLayer(meMarker);
+    meMarker = L.marker([state.me.lat,state.me.lng],{icon:L.divIcon({className:"",iconSize:[14,14],html:'<div class="me"></div>'}),interactive:false,zIndexOffset:900}).addTo(map);
+    map.flyTo([state.me.lat,state.me.lng],8,{duration:reduceMotion?0:.8});
+    $("sort").querySelector('[value=near]').disabled = false; $("sort").querySelector('[value=near]').textContent = "Terdekat dari saya"; $("sort").value = state.sort = "near";
+    render(); toast("Diurutkan dari yang terdekat");
+  }, err => toast(err.code===1?"Izin lokasi ditolak":err.code===3?"Pencarian lokasi melewati batas waktu":"Lokasi tidak tersedia"), {timeout:10000});
+};
+$("export").onclick = () => {
+  const a = items(), h = ["kategori","judul","waktu","lat","lng","magnitudo","kedalaman","sumber"];
+  const csv = [h].concat(a.map(e => [CATS[e.cat].label,e.title,e.time?e.time.toISOString():"",e.lat,e.lng,e.mag??"",e.depth??"",e.source])).map(r => r.map(v => '"'+String(typeof v==='string'&&/^[=+@\-\t\r]/.test(v)?"'"+v:v).replace(/"/g,'""')+'"').join(",")).join("\n");
+  const u = URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv"})), l = document.createElement("a");
+  l.href = u; l.download = "pantau-nusantara.csv"; l.click(); setTimeout(()=>URL.revokeObjectURL(u),1000); toast(a.length + " kejadian diunduh");
+};
+$("about").onclick = () => openModal($("modal"));
+$("closeModal").onclick = () => closeModal($("modal"));
+$("modal").onclick = e => { if (e.target === $("modal")) closeModal($("modal")); };
+addEventListener("keydown", e => { if (e.key === "Escape") { closeModal($("modal")); $("detail").className = "detail";state.sel=null;renderList();renderMap(); } });
+$("theme").onclick = () => {
+  const d = document.documentElement, next = d.dataset.theme === "dark" ? "light" : "dark";
+  d.dataset.theme = next; try { localStorage.setItem("pn-theme", next); } catch(e){}
+  setTiles(); render();
+};
+
+const reduceMotion=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const dayKey=d=>d.toLocaleDateString('en-CA',{timeZone:'Asia/Jakarta'});
+function openModal(el){el.classList.add('open');el.showModal()}
+function closeModal(el){el.classList.remove('open');el.close()}
+document.querySelectorAll('dialog.modal').forEach(el=>el.addEventListener('close',()=>el.classList.remove('open')));
+addEventListener('resize',()=>map.invalidateSize());
+const notifyPrefs=(()=>{try{return JSON.parse(localStorage.getItem('pn-notify-prefs'))||{enabled:true,sound:false,categories:['gempa','cuaca','banjir','gunung','laporan']}}catch{return {enabled:true,sound:false,categories:['gempa','cuaca','banjir','gunung','laporan']}}})();
+function readSaved(k,f){try{return JSON.parse(localStorage.getItem(k))||f}catch{return f}}
+function saveSaved(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+let knownEvents=readSaved('pn-known-v2',null),notifyHistory=readSaved('pn-history-v2',[]),audio;
+$('about').insertAdjacentHTML('beforebegin','<button class="btn sq" id="bell" aria-label="Notifikasi kejadian" title="Notifikasi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button>');
+document.body.insertAdjacentHTML('beforeend',`<dialog class="modal" id="alerts" aria-labelledby="alertsTitle"><div class="sheet"><h2 id="alertsTitle">Notifikasi kejadian</h2><p>Memantau pembaruan setiap satu menit selama aplikasi terbuka. Bukan layanan peringatan darurat resmi.</p><label><input type="checkbox" id="notifyEnabled"> Notifikasi dalam aplikasi</label><label><input type="checkbox" id="notifySound"> Bunyi pemberitahuan</label><div id="alertCats">${Object.entries(CATS).map(([k,v])=>`<label><input type="checkbox" data-notify="${k}">${v.label}</label>`).join('')}</div><div class="acts"><button id="browserNotifications">Aktifkan notifikasi browser</button><button id="testNotification">Coba notifikasi</button></div><p id="notificationStatus"></p><p>Notifikasi tidak berjalan setelah aplikasi ditutup. Izinkan notifikasi browser untuk pemberitahuan sistem.</p><h3>Riwayat pembaruan</h3><div id="notifyHistory"></div><div class="acts"><button id="clearHistory">Hapus riwayat</button><button id="closeAlerts">Tutup</button></div></div></dialog>`);
+function eventVersion(e){return e.id+(e.cat==='gunung'?'|'+e.level:'')}
+function detectChanges(events,known){const ids=events.map(eventVersion),seen=new Set(known||[]);return {ids,fresh:known===null?[]:events.filter(e=>!seen.has(eventVersion(e)))}}
+function sound(force=false){if(!audio||(!force&&!notifyPrefs.sound))return;try{const o=audio.createOscillator(),g=audio.createGain();o.connect(g);g.connect(audio.destination);o.frequency.setValueAtTime(660,audio.currentTime);o.frequency.setValueAtTime(880,audio.currentTime+.12);g.gain.setValueAtTime(.07,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.4);o.start();o.stop(audio.currentTime+.4)}catch{}}
+function unlockAudio(){try{audio ||= new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{})}catch{}}
+function renderNotifications(){
+ $('notifyEnabled').checked=notifyPrefs.enabled;$('notifySound').checked=notifyPrefs.sound;document.querySelectorAll('[data-notify]').forEach(e=>e.checked=notifyPrefs.categories.includes(e.dataset.notify));
+ $('bell').classList.toggle('new',notifyHistory.some(x=>!x.read));
+ $('notificationStatus').textContent=!('Notification'in window)?'Notifikasi sistem tidak didukung browser ini.':Notification.permission==='granted'?'Izin notifikasi browser aktif.':Notification.permission==='denied'?'Izin diblokir. Ubah izin pada pengaturan situs di browser.':'Izin notifikasi browser belum diaktifkan.';
+ $('notifyHistory').innerHTML=notifyHistory.length?notifyHistory.map(x=>`<article class="alert-history"><b>${esc(x.message)}</b><small>${fmt(new Date(x.at))}</small></article>`).join(''):'<p>Belum ada pembaruan. Kejadian lama tidak dikirim ulang saat kunjungan pertama.</p>';
+}
+async function sendSystemNotification(message){if(!('Notification'in window)||Notification.permission!=='granted')return;try{const reg='serviceWorker'in navigator?await navigator.serviceWorker.getRegistration():null;if(reg)await reg.showNotification('Pantau Nusantara',{body:message,tag:'pantau-update'});else new Notification('Pantau Nusantara',{body:message,tag:'pantau-update'})}catch{}}
+function trackUpdates(events){const change=detectChanges(events,knownEvents);knownEvents=[...new Set([...(knownEvents||[]),...change.ids])].slice(-20000);saveSaved('pn-known-v2',knownEvents);const fresh=change.fresh.filter(e=>notifyPrefs.categories.includes(e.cat));if(!notifyPrefs.enabled||!fresh.length)return;const counts={};fresh.forEach(e=>counts[e.cat]=(counts[e.cat]||0)+1);const message=Object.entries(counts).map(([k,n])=>n+' '+CATS[k].label.toLowerCase()).join(', ')+' baru atau diperbarui';notifyHistory.unshift({message,at:new Date().toISOString(),read:$('alerts').open});notifyHistory=notifyHistory.slice(0,40);saveSaved('pn-history-v2',notifyHistory);toast(message);sound();sendSystemNotification(message);renderNotifications()}
+$('bell').onclick=()=>{notifyHistory.forEach(x=>x.read=true);saveSaved('pn-history-v2',notifyHistory);renderNotifications();openModal($('alerts'))};
+$('notifyEnabled').onchange=e=>{notifyPrefs.enabled=e.target.checked;saveSaved('pn-notify-prefs',notifyPrefs)};
+$('notifySound').onchange=e=>{notifyPrefs.sound=e.target.checked;saveSaved('pn-notify-prefs',notifyPrefs);if(e.target.checked){unlockAudio();sound()}};
+document.querySelectorAll('[data-notify]').forEach(e=>e.onchange=()=>{notifyPrefs.categories=Array.from(document.querySelectorAll('[data-notify]:checked'),e=>e.dataset.notify);saveSaved('pn-notify-prefs',notifyPrefs)});
+$('browserNotifications').onclick=async()=>{if('Notification'in window)try{await Notification.requestPermission()}catch{}renderNotifications()};
+$('testNotification').onclick=()=>{closeModal($('alerts'));unlockAudio();sound(true);toast('Contoh notifikasi — bukan kejadian baru.')};$('closeAlerts').onclick=()=>closeModal($('alerts'));$('alerts').onclick=e=>{if(e.target===$('alerts'))closeModal($('alerts'))};$('alerts').addEventListener('close',()=>$('alerts').classList.remove('open'));
+$('clearHistory').onclick=()=>{notifyHistory=[];saveSaved('pn-history-v2',notifyHistory);renderNotifications()};renderNotifications();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+/* ===== Mulai ===== */
+let saved; try { saved = localStorage.getItem("pn-theme"); } catch(e){}
+document.documentElement.dataset.theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+setTiles();map.fitBounds([[-11.5,94],[6.5,142]],{padding:[20,20],animate:false}); load(); setInterval(load, CONFIG.REFRESH_MS);
+</script>
+</body>
+</html>
